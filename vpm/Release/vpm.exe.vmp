@@ -1,0 +1,11 @@
+[ProjectInfo]
+InputFileName=C:\Users\Administrator\source\repos\vpm\Release\vpm.exe
+Count=1
+Options=5064
+VMExecutorCount=1
+CheckKernelModeDebugger=0
+[Procedures]
+MapAddress0=VMProtectMarker "Test marker"
+NeedCompile0=1
+Options0=1
+CompilationType0=0

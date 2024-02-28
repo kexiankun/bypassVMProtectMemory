@@ -1,28 +1,3 @@
-#include <windows.h>
-#include <ntstatus.h>
-#include <tlhelp32.h>
-#include <stdio.h>
-
-#include <psapi.h>
-#pragma comment(lib, "psapi.lib")
-
-// ¶¨ÒåZwProtectVirtualMemoryº¯ÊıµÄÔ­ĞÍ
-typedef NTSTATUS(WINAPI *PFZWPROTECTVIRTUALMEMORY)(
-	HANDLE ProcessHandle,
-	PVOID *BaseAddress,
-	PSIZE_T NumberOfBytesToProtect,
-	ULONG NewAccessProtection,
-	PULONG OldAccessProtection
-	);
-
-// ¶¨ÒåZwWriteVirtualMemoryº¯ÊıµÄÔ­ĞÍ
-typedef NTSTATUS(WINAPI *PFZWWRITEVIRTUALMEMORY)(
-	HANDLE ProcessHandle,
-	PVOID BaseAddress,
-	PVOID Buffer,
-	SIZE_T BufferSize,
-	PSIZE_T NumberOfBytesWritten
-	);
 
 #include <windows.h>
 #include <tlhelp32.h>
@@ -31,31 +6,31 @@ typedef NTSTATUS(WINAPI *PFZWWRITEVIRTUALMEMORY)(
 #include <psapi.h>
 #pragma comment(lib, "psapi.lib")
 
-// ¼ÆËãÊµ¼ÊµÄÔËĞĞÊ±µØÖ·
+// è®¡ç®—å®é™…çš„è¿è¡Œæ—¶åœ°å€
 DWORD CalculateRuntimeAddress(HANDLE hProcess, HMODULE hModule, DWORD originalRVA) {
 	MODULEINFO mi;
 	BOOL result = GetModuleInformation(hProcess, hModule, &mi, sizeof(mi));
 	if (result) {
-		// Êä³öÄ£¿éĞÅÏ¢
-		printf("Ä£¿é»ùÖ·: %p\n", mi.lpBaseOfDll);
-		printf("Ä£¿é´óĞ¡: %lu ×Ö½Ú\n", mi.SizeOfImage);
-		printf("Ä£¿éÈë¿Úµã: %p\n", mi.EntryPoint);
-		// ¼ÆËãÊµ¼ÊµÄÔËĞĞÊ±µØÖ·
+		// è¾“å‡ºæ¨¡å—ä¿¡æ¯
+		printf("æ¨¡å—åŸºå€: %p\n", mi.lpBaseOfDll);
+		printf("æ¨¡å—å¤§å°: %lu å­—èŠ‚\n", mi.SizeOfImage);
+		printf("æ¨¡å—å…¥å£ç‚¹: %p\n", mi.EntryPoint);
+		// è®¡ç®—å®é™…çš„è¿è¡Œæ—¶åœ°å€
 		DWORD runtimeAddress = (DWORD)mi.lpBaseOfDll + originalRVA;
-		printf("¼ÆËãºóµÄÔËĞĞÊ±µØÖ·: %08X\n", runtimeAddress);
+		printf("è®¡ç®—åçš„è¿è¡Œæ—¶åœ°å€: %08X\n", runtimeAddress);
 		return runtimeAddress;
 	}
 	else {
-		printf("»ñÈ¡Ä£¿éĞÅÏ¢Ê§°Ü¡£\n");
+		printf("è·å–æ¨¡å—ä¿¡æ¯å¤±è´¥ã€‚\n");
 		return 0;
 	}
 }
 
-// »ñÈ¡Ö¸¶¨½ø³ÌÃûµÄ½ø³ÌID
+// è·å–æŒ‡å®šè¿›ç¨‹åçš„è¿›ç¨‹ID
 DWORD GetProcessIdByName(const char* processName) {
 	HANDLE hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 	if (hProcessSnap == INVALID_HANDLE_VALUE) {
-		printf("´´½¨½ø³Ì¿ìÕÕÊ§°Ü¡£\n");
+		printf("åˆ›å»ºè¿›ç¨‹å¿«ç…§å¤±è´¥ã€‚\n");
 		return 0;
 	}
 
@@ -64,7 +39,7 @@ DWORD GetProcessIdByName(const char* processName) {
 
 	if (!Process32First(hProcessSnap, &pe32)) {
 		CloseHandle(hProcessSnap);
-		printf("»ñÈ¡µÚÒ»¸ö½ø³ÌÊ§°Ü¡£\n");
+		printf("è·å–ç¬¬ä¸€ä¸ªè¿›ç¨‹å¤±è´¥ã€‚\n");
 		return 0;
 	}
 
@@ -76,58 +51,58 @@ DWORD GetProcessIdByName(const char* processName) {
 	} while (Process32Next(hProcessSnap, &pe32));
 
 	CloseHandle(hProcessSnap);
-	printf("Î´ÕÒµ½½ø³Ì '%s'¡£\n", processName);
+	printf("æœªæ‰¾åˆ°è¿›ç¨‹ '%s'ã€‚\n", processName);
 	return 0;
 }
 
-// Ó¦ÓÃ²¹¶¡µÄº¯Êı
+// åº”ç”¨è¡¥ä¸çš„å‡½æ•°
 BOOL ApplyPatch(HANDLE hProcess, LPVOID runtimeAddress, BYTE* patch, DWORD patchSize) {
 
 	BOOL result = WriteProcessMemory(hProcess, runtimeAddress, patch, patchSize, NULL);
 	if (result) {
-		printf("³É¹¦Ó¦ÓÃ²¹¶¡µ½µØÖ·: %08X\n", runtimeAddress);
+		printf("æˆåŠŸåº”ç”¨è¡¥ä¸åˆ°åœ°å€: %08X\n", runtimeAddress);
 	}
 	else {
-		printf("ÔÚµØÖ· %08X ´¦Ó¦ÓÃ²¹¶¡Ê§°Ü¡£\n", runtimeAddress);
+		printf("åœ¨åœ°å€ %08X å¤„åº”ç”¨è¡¥ä¸å¤±è´¥ã€‚\n", runtimeAddress);
 	}
 	return result;
 }
 
 int main() {
-	const char* processName = "cmpvpm.exe"; // ÄãÏëÒª²éÕÒµÄ½ø³ÌÃû
+	const char* processName = "cmpvpm.exe"; // ä½ æƒ³è¦æŸ¥æ‰¾çš„è¿›ç¨‹å
 	DWORD processId = GetProcessIdByName(processName);
 
 	if (processId == 0) {
-		printf("Î´ÕÒµ½½ø³Ì¡£\n");
+		printf("æœªæ‰¾åˆ°è¿›ç¨‹ã€‚\n");
 		return 1;
 	}
 
 	HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
 	if (hProcess == NULL) {
-		printf("´ò¿ª½ø³ÌÊ§°Ü¡£\n");
+		printf("æ‰“å¼€è¿›ç¨‹å¤±è´¥ã€‚\n");
 		return 1;
 	}
 
-	// ¼ÙÉèÎÒÃÇÒªĞŞ¸ÄµÄÔ­Ê¼µØÖ·ÊÇÏà¶ÔÓÚÄ£¿é»ùÖ·µÄÆ«ÒÆÁ¿
-	DWORD FirstRVA = 0x1C19; // Ê¾ÀıµØÖ·£¬Êµ¼ÊÊ¹ÓÃÊ±ĞèÒªÌæ»»ÎªÕıÈ·µÄµØÖ·
-	DWORD SecondRVA = 0x1C2e; // Ê¾ÀıµØÖ·£¬Êµ¼ÊÊ¹ÓÃÊ±ĞèÒªÌæ»»ÎªÕıÈ·µÄµØÖ·
+	// å‡è®¾æˆ‘ä»¬è¦ä¿®æ”¹çš„åŸå§‹åœ°å€æ˜¯ç›¸å¯¹äºæ¨¡å—åŸºå€çš„åç§»é‡
+	DWORD FirstRVA = 0x1C19; // ç¤ºä¾‹åœ°å€ï¼Œå®é™…ä½¿ç”¨æ—¶éœ€è¦æ›¿æ¢ä¸ºæ­£ç¡®çš„åœ°å€
+	DWORD SecondRVA = 0x1C2e; // ç¤ºä¾‹åœ°å€ï¼Œå®é™…ä½¿ç”¨æ—¶éœ€è¦æ›¿æ¢ä¸ºæ­£ç¡®çš„åœ°å€
 	HMODULE hModuleArray[1024];
 	DWORD cbNeeded;
 
 	if (EnumProcessModules(hProcess, hModuleArray, sizeof(hModuleArray), &cbNeeded)) {
-		HMODULE hModule = hModuleArray[0]; // »ñÈ¡µÚÒ»¸öÄ£¿é
+		HMODULE hModule = hModuleArray[0]; // è·å–ç¬¬ä¸€ä¸ªæ¨¡å—
 		DWORD FirstAddress = CalculateRuntimeAddress(hProcess, hModule, FirstRVA);
-		// ¼ÙÉèÎÒÃÇÒªĞŞ¸ÄµÄÔ­Ê¼µØÖ·ÊÇÏà¶ÔÓÚÄ£¿é»ùÖ·µÄÆ«ÒÆÁ¿
+		// å‡è®¾æˆ‘ä»¬è¦ä¿®æ”¹çš„åŸå§‹åœ°å€æ˜¯ç›¸å¯¹äºæ¨¡å—åŸºå€çš„åç§»é‡
 		DWORD SecondAddress = CalculateRuntimeAddress(hProcess, hModule, SecondRVA);
 
-		BYTE PatchData[] = { 0x75 }; // NOPÖ¸Áî
+		BYTE PatchData[] = { 0x75 }; // NOPæŒ‡ä»¤
 
 		ApplyPatch(hProcess, (LPVOID)FirstAddress, PatchData, sizeof(PatchData));
 		ApplyPatch(hProcess, (LPVOID)SecondAddress, PatchData, sizeof(PatchData));
 	
 		}
 	
-	// ¹Ø±Õ½ø³Ì¾ä±ú
+	// å…³é—­è¿›ç¨‹å¥æŸ„
 	CloseHandle(hProcess);
 
 	getchar();
